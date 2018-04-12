@@ -102,30 +102,30 @@ public final class Injector {
     public static void scan(Class<? extends Annotation> annotationClass, String packageName) {
         if (DEPENDENCY_MAP != null) throw new IllegalStateException("Class-path has already been scanned.");
 
-        var basePath = packageName.replace('.', '/');
-        var classLoader = Thread.currentThread().getContextClassLoader();
+        String basePath = packageName.replace('.', '/');
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
         // Scan classes with attached annotation
-        var classNames = isExecutingJar() ? scanJar(basePath) : scanFiles(basePath, classLoader);
-        var classes = classNames.map(it -> substringAfter(it, basePath).replace('/', '.'))
+        Stream<String> classNames = isExecutingJar() ? scanJar(basePath) : scanFiles(basePath, classLoader);
+        Stream<? extends Class<?>> classes = classNames.map(it -> substringAfter(it, basePath).replace('/', '.'))
                 .map(it -> packageName + "." + it)
                 .map(it -> it.substring(0, it.length() - CLASS_EXTENSION.length()))
                 .map(it -> asClass(it, classLoader))
                 .filter(it -> it.isAnnotationPresent(annotationClass));
 
         // Create graph nodes
-        var graph = new HashSet<ClassNode>();
+        Set<ClassNode> graph = new HashSet<>();
         classes.forEach(clazz -> getOrCreate(graph, clazz).neighbors
                 .addAll(primaryParameters(clazz).stream()
                         .map(it -> getOrCreate(graph, it.getType()))
                         .collect(toList())));
-        var indegree = new HashMap<ClassNode, Integer>();
+        Map<ClassNode, Integer> indegree = new HashMap<>();
         graph.forEach(it -> indegree.put(it, 0));
         graph.stream().flatMap(it -> it.neighbors.stream()).forEach(it -> indegree.put(it, indegree.get(it) + 1));
 
         // Topologically sort the nodes
-        var sorted = new ArrayList<Class<?>>();
-        var queue = new LinkedList<ClassNode>();
+        List<Class<?>> sorted = new ArrayList<>();
+        LinkedList<ClassNode> queue = new LinkedList<>();
 
         graph.stream().filter(it -> indegree.get(it) == 0).forEach(it -> {
             queue.offer(it);
@@ -148,7 +148,7 @@ public final class Injector {
         DEPENDENCY_MAP = new HashMap<>();
         sorted.forEach(clazz -> {
             try {
-                var arguments = primaryParameters(clazz).stream().map(it -> DEPENDENCY_MAP.get(it.getType())).toArray();
+                Object[] arguments = primaryParameters(clazz).stream().map(it -> DEPENDENCY_MAP.get(it.getType())).toArray();
                 DEPENDENCY_MAP.put(clazz, primaryConstructor(clazz).newInstance(arguments));
             } catch (NullPointerException e) {
                 throw new IllegalArgumentException("Missing dependency.", e);
@@ -180,7 +180,7 @@ public final class Injector {
 
     private static ClassNode getOrCreate(Set<ClassNode> graph, Class<?> clazz) {
         return graph.stream().filter(it -> it.value.equals(clazz)).findAny().orElseGet(() -> {
-            var node = new ClassNode(clazz);
+            ClassNode node = new ClassNode(clazz);
             graph.add(node);
             return node;
         });
