@@ -4,7 +4,7 @@ TinyInjector aims to be a very light weight dependency injection library. For th
 
 It only uses constructor dependency injection for that.
 
-The class-path is automatically being searched for classes annotated with an annotation of your choice, although they all have to use the same annotation. All matching classes are topologically sorted and instatiated.
+The class-path is automatically being searched for classes annotated with an annotation of your choice, although they all have to use the same annotation. All matching classes are topologically sorted and instantiated.
 
 ## Example
 
