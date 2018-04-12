@@ -1,0 +1,4 @@
+apply plugin: 'java'
+
+sourceCompatibility = 10
+targetCompatibility = 10
