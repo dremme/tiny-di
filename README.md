@@ -21,7 +21,7 @@ repositories {
 }
 
 dependencies {
-  compile "com.github.dremme:tiny-injector:0.9.0"
+  compile "com.github.dremme:tiny-injector:0.9.1"
 }
 ```
 
@@ -38,7 +38,7 @@ dependencies {
 <dependency>
   <groupId>com.github.dremme</groupId>
   <artifactId>tiny-injector</artifactId>
-  <version>0.9.0</version>
+  <version>0.9.1</version>
 </dependency>
 ```
 

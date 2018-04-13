@@ -34,7 +34,7 @@ import lombok.val;
  * The class-path is automatically being searched for classes annotated with an annotation of your choice, although they
  * all have to use the same annotation. All matching classes are topologically sorted and instantiated.
  *
- * <h2>Example</h2>
+ * <h2>Usage:</h2>
  *
  * <pre>
  * {@literal @}Component public class Foo {
