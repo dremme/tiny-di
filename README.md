@@ -8,7 +8,7 @@ The class-path is automatically being searched for classes annotated with an ann
 
 ## Getting Started
 
-[![Release](https://jitpack.io/v/dremme/tiny-injector.svg)](https://jitpack.io/#dremme/tiny-injector)
+TinyInjector is available via JitPack. [![Release](https://jitpack.io/v/dremme/tiny-injector.svg)](https://jitpack.io/#dremme/tiny-injector)
 
 ### Gradle
 
