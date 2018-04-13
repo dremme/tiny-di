@@ -1,3 +1,9 @@
+ext {
+  LOMBOK = 'org.projectlombok:lombok:1.16.20'
+  JUNIT_API = 'org.junit.jupiter:junit-jupiter-api:5.1.1'
+  JUNIT = 'org.junit.jupiter:junit-jupiter-engine:5.1.1'
+}
+
 apply plugin: 'java'
 apply plugin: 'maven'
 
@@ -6,13 +12,20 @@ repositories {
 }
 
 dependencies {
-  compile 'org.projectlombok:lombok:1.16.20'
-  annotationProcessor 'org.projectlombok:lombok:1.16.20'
+  compileOnly LOMBOK
+  testCompileOnly LOMBOK
+  annotationProcessor LOMBOK
+  testCompile JUNIT_API
+  testRuntime JUNIT
 }
 
 group 'com.github.dremme' // TODO: Correct group? Really needed for JITPACK?
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
+
+test {
+  useJUnitPlatform()
+}
 
 task sourcesJar(type: Jar, dependsOn: classes) {
   classifier = 'sources'

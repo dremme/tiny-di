@@ -37,11 +37,11 @@ import lombok.val;
  * <h2>Example</h2>
  *
  * <pre>
- * {@literal @}Component public class Foo() {
+ * {@literal @}Component public class Foo {
  *     public void beep() { ... }
  * }
  *
- * {@literal @}Component public class Bar(Foo foo) { ... }
+ * {@literal @}Component public class Bar { public Bar(Foo foo) { ... } }
  * </pre>
  * <p>
  * To automatically scan for these classes just call:
@@ -50,7 +50,7 @@ import lombok.val;
  * import  hamburg.remme.tinyinjector.Injector.scan;
  * import hamburg.remme.tinyinjector.Component;
  *
- * public  final main(String[] args) {
+ * public static void main(String[] args) {
  *     scan(Component.class, "my.package");
  * }
  * </pre>
@@ -63,18 +63,16 @@ import lombok.val;
  * import  hamburg.remme.tinyinjector.Injector.scan;
  * import hamburg.remme.tinyinjector.Component;
  *
- * public  final main(String[] args) {
+ * public static void main(String[] args) {
  *     scan(Component.class, "my.package");
  *     var foo = retrieve(Foo.class);
  *     foo.beep();
  * }
  * </pre>
  *
- *
+ * @author Dennis Remme (dennis@remme.hamburg)
  * @todo: migrate to Java 10 asap; depends on JITPACK and Lombok
  * @todo: move to MavenCentral? Bit cumbersome...
- *
- * @author Dennis Remme (dennis@remme.hamburg)
  */
 @UtilityClass public class Injector {
 
@@ -111,12 +109,11 @@ import lombok.val;
         val classLoader = Thread.currentThread().getContextClassLoader();
 
         // Scan classes with attached annotation
-        val classNames = isExecutingJar() ? scanJar(basePath) : scanFiles(basePath, classLoader);
-        // val not working here; generics bug?
-        Stream<? extends Class<?>> classes = classNames.map(it -> substringAfter(it, basePath).replace('/', '.'))
+        val classNames = isExecutingJar(classLoader) ? scanJar(basePath, classLoader) : scanFiles(basePath, classLoader);
+        val classes = classNames.map(it -> substringAfter(it, basePath).replace('/', '.'))
                 .map(it -> packageName + "." + it)
                 .map(it -> it.substring(0, it.length() - CLASS_EXTENSION.length()))
-                .map(it -> asClass(it, classLoader))
+                .<Class<?>>map(it -> asClass(it, classLoader)) // type declaration needed!
                 .filter(it -> it.isAnnotationPresent(annotationClass));
 
         // Create graph nodes
@@ -164,8 +161,8 @@ import lombok.val;
         });
     }
 
-    private Stream<String> scanJar(String basePath) {
-        return asStream(getJar().entries())
+    private Stream<String> scanJar(String basePath, ClassLoader classLoader) {
+        return asStream(getJar(classLoader).entries())
                 .map(ZipEntry::getName)
                 .filter(it -> it.startsWith(basePath))
                 .filter(it -> it.toLowerCase().endsWith(CLASS_EXTENSION));
@@ -208,12 +205,12 @@ import lombok.val;
         return (T) DEPENDENCY_MAP.get(clazz);
     }
 
-    private boolean isExecutingJar() {
-        return Injector.class.getResource(Injector.class.getSimpleName() + ".class").toExternalForm().startsWith("jar");
+    private boolean isExecutingJar(ClassLoader classLoader) {
+        return classLoader.getResource("").toExternalForm().startsWith("jar");
     }
 
-    @SneakyThrows private JarFile getJar() {
-        return new JarFile(new File(Injector.class.getProtectionDomain().getCodeSource().getLocation().toURI()));
+    @SneakyThrows private JarFile getJar(ClassLoader classLoader) {
+        return new JarFile(new File(classLoader.getResource("").toURI()));
     }
 
     @SneakyThrows private Stream<Path> walk(Path path) {
@@ -225,15 +222,7 @@ import lombok.val;
     }
 
     private <T> Stream<T> asStream(Enumeration<T> enumeration) {
-        return stream(spliteratorUnknownSize(new Iterator<T>() {
-            @Override public boolean hasNext() {
-                return enumeration.hasMoreElements();
-            }
-
-            @Override public T next() {
-                return enumeration.nextElement();
-            }
-        }, ORDERED), false);
+        return stream(spliteratorUnknownSize(EnumIterator.of(enumeration), ORDERED), false);
     }
 
     @SneakyThrows private Class<?> asClass(String className, ClassLoader classLoader) {
@@ -247,6 +236,25 @@ import lombok.val;
 
         final Class<?> value;
         final List<ClassNode> neighbors = new ArrayList<>();
+
+    }
+
+    /**
+     * Used to wrap {@link Enumeration}.
+     *
+     * @deprecated To be replaced with Java 10.
+     */
+    @RequiredArgsConstructor(staticName = "of") class EnumIterator<T> implements Iterator<T> {
+
+        final Enumeration<T> enumeration;
+
+        @Override public boolean hasNext() {
+            return enumeration.hasMoreElements();
+        }
+
+        @Override public T next() {
+            return enumeration.nextElement();
+        }
 
     }
 

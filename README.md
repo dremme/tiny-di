@@ -26,11 +26,11 @@ dependencies {
 ## Example
 
 ```java
-@Component public class Foo() {
+@Component public class Foo {
     public void beep() { ... }
 }
 
-@Component public class Bar(Foo foo) { ... }
+@Component public class Bar { public Bar(Foo foo) { ... } }
 ```
 
 To automatically scan for these classes just call:
@@ -39,7 +39,7 @@ To automatically scan for these classes just call:
 import static hamburg.remme.tinyinjector.Injector.scan;
 import hamburg.remme.tinyinjector.Component;
 
-public static final main(String[] args) {
+public static void main(String[] args) {
     scan(Component.class, "my.package");
 }
 ```
@@ -52,7 +52,7 @@ To retrieve a singleton just call:
 import static hamburg.remme.tinyinjector.Injector.scan;
 import hamburg.remme.tinyinjector.Component;
 
-public static final main(String[] args) {
+public static void main(String[] args) {
     scan(Component.class, "my.package");
     var foo = retrieve(Foo.class);
     foo.beep();
