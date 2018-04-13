@@ -10,6 +10,8 @@ The class-path is automatically being searched for classes annotated with an ann
 
 [![Release](https://jitpack.io/v/dremme/tiny-injector.svg)](https://jitpack.io/#dremme/tiny-injector)
 
+### Gradle
+
 In order to use TinyInjector just add this to your `build.gradle`:
 
 ```groovy
@@ -19,8 +21,25 @@ repositories {
 }
 
 dependencies {
-  compile "com.github.dremme:tiny-injector:1.0.0"
+  compile "com.github.dremme:tiny-injector:0.9.0"
 }
+```
+
+### Maven
+
+```xml
+<repositories>
+  <repository>
+    <id>jitpack.io</id>
+    <url>https://jitpack.io</url>
+  </repository>
+</repositories>
+...
+<dependency>
+  <groupId>com.github.dremme</groupId>
+  <artifactId>tiny-injector</artifactId>
+  <version>0.9.0</version>
+</dependency>
 ```
 
 ## Example
