@@ -1,5 +1,8 @@
 package hamburg.remme.tinyinjector;
 
+import static java.lang.String.format;
+import static java.lang.Thread.currentThread;
+import static java.util.Arrays.asList;
 import static java.util.Spliterator.ORDERED;
 import static java.util.Spliterators.spliteratorUnknownSize;
 import static java.util.stream.Collectors.toList;
@@ -89,7 +92,7 @@ import lombok.val;
      * @throws IllegalStateException    when the class-path has already been scanned
      * @see #retrieve(Class)
      */
-    public void scan(@NonNull String packageName) {
+    public void scan(String packageName) {
         scan(Component.class, packageName);
     }
 
@@ -106,11 +109,11 @@ import lombok.val;
         if (DEPENDENCY_MAP != null) throw new IllegalStateException("Class-path has already been scanned.");
 
         val basePath = packageName.replace('.', '/');
-        val classLoader = Thread.currentThread().getContextClassLoader();
+        val classLoader = currentThread().getContextClassLoader();
 
         // Scan classes with attached annotation
         val classNames = isExecutingJar(classLoader) ? scanJar(basePath, classLoader) : scanFiles(basePath, classLoader);
-        val classes = classNames.map(it -> substringAfter(it, basePath).replace('/', '.'))
+        val classes = classNames.map(it -> substringAfterLast(it, basePath + '/').replace('/', '.'))
                 .map(it -> packageName + "." + it)
                 .map(it -> it.substring(0, it.length() - CLASS_EXTENSION.length()))
                 .<Class<?>>map(it -> asClass(it, classLoader)) // type declaration needed!
@@ -156,7 +159,7 @@ import lombok.val;
             } catch (NullPointerException e) {
                 throw new IllegalArgumentException("Missing dependency.", e);
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw new IllegalArgumentException("Injecting dependecies failed for class " + clazz);
+                throw new IllegalArgumentException(format("Injecting dependecies failed for class %s", clazz));
             }
         });
     }
@@ -190,7 +193,7 @@ import lombok.val;
     }
 
     private List<Parameter> primaryParameters(Class<?> clazz) {
-        return Arrays.asList(primaryConstructor(clazz).getParameters());
+        return asList(primaryConstructor(clazz).getParameters());
     }
 
     /**
@@ -201,7 +204,8 @@ import lombok.val;
      */
     @SuppressWarnings("unchecked") public <T> T retrieve(@NonNull Class<T> clazz) {
         if (DEPENDENCY_MAP == null) throw new IllegalStateException("Retrieve called before scanning class-path.");
-        if (!DEPENDENCY_MAP.containsKey(clazz)) throw new IllegalArgumentException("No such singleton.");
+        if (!DEPENDENCY_MAP.containsKey(clazz))
+            throw new IllegalArgumentException(format("No such singleton %s", clazz));
         return (T) DEPENDENCY_MAP.get(clazz);
     }
 
@@ -213,12 +217,13 @@ import lombok.val;
         return new JarFile(new File(classLoader.getResource("").toURI()));
     }
 
+    // Needed to catch the checked exception
     @SneakyThrows private Stream<Path> walk(Path path) {
         return Files.walk(path);
     }
 
-    private String substringAfter(String source, String delimiter) {
-        return source.substring(source.lastIndexOf(delimiter) + delimiter.length() + 1);
+    private String substringAfterLast(String source, String delimiter) {
+        return source.substring(source.lastIndexOf(delimiter) + delimiter.length());
     }
 
     private <T> Stream<T> asStream(Enumeration<T> enumeration) {
