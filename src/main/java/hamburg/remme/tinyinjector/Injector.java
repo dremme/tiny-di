@@ -111,9 +111,12 @@ import lombok.val;
 
     /**
      * Creates a non-singleton instance of the class and injects needed dependencies.
+     * <p>
+     * The signature of the class' constructor has to be compliant with the scanned classes for now.
      *
      * @throws IllegalStateException    if no classes have been scanned yet
      * @throws IllegalArgumentException if the class could not be instantiated for some reason
+     * @todo: allow a map of additional arguments for class instantiation
      */
     public <T> T inject(@NonNull Class<T> clazz) {
         if (DEPENDENCY_MAP == null) throw new IllegalStateException("Retrieve called before scanning class-path.");
@@ -150,6 +153,7 @@ import lombok.val;
      * @throws IllegalArgumentException when there are cyclic or missing dependencies
      * @throws IllegalStateException    when the class-path has already been scanned
      * @see #retrieve(Class)
+     * @see #inject(Class)
      */
     public void scan(String packageName) {
         scan(Component.class, packageName);
@@ -163,6 +167,7 @@ import lombok.val;
      * @throws IllegalArgumentException when there are cyclic or missing dependencies
      * @throws IllegalStateException    when the class-path has already been scanned
      * @see #retrieve(Class)
+     * @see #inject(Class)
      */
     public synchronized void scan(@NonNull Class<? extends Annotation> annotationClass, @NonNull String packageName) {
         if (DEPENDENCY_MAP != null) throw new IllegalStateException("Class-path has already been scanned.");
