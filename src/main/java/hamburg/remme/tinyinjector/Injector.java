@@ -11,7 +11,6 @@ import static java.util.stream.StreamSupport.stream;
 import java.io.File;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
 import java.net.URL;
 import java.nio.file.Files;
@@ -43,13 +42,15 @@ import lombok.val;
  *     public void beep() { ... }
  * }
  *
- * {@literal @}Component public class Bar { public Bar(Foo foo) { ... } }
+ * {@literal @}Component public class Bar {
+ *     public Bar(Foo foo) { ... }
+ * }
  * </pre>
  * <p>
  * To automatically scan for these classes just call:
  *
  * <pre>
- * import  hamburg.remme.tinyinjector.Injector.scan;
+ * import static hamburg.remme.tinyinjector.Injector.scan;
  * import hamburg.remme.tinyinjector.Component;
  *
  * public static void main(String[] args) {
@@ -62,13 +63,26 @@ import lombok.val;
  * To retrieve a singleton just call:
  *
  * <pre>
- * import  hamburg.remme.tinyinjector.Injector.scan;
+ * import static hamburg.remme.tinyinjector.Injector.scan;
  * import hamburg.remme.tinyinjector.Component;
  *
  * public static void main(String[] args) {
  *     scan(Component.class, "my.package");
  *     var foo = retrieve(Foo.class);
  *     foo.beep();
+ * }
+ * </pre>
+ * <p>
+ * For non-singleton instances dependencies can be injected after scanning:
+ *
+ * <pre>
+ * import static hamburg.remme.tinyinjector.Injector.inject;
+ * import static hamburg.remme.tinyinjector.Injector.scan;
+ * import hamburg.remme.tinyinjector.Component;
+ *
+ * public static void main(String[] args) {
+ *     scan(Component.class, "my.package");
+ *     var bar = inject(Bar.class);
  * }
  * </pre>
  *
@@ -80,6 +94,52 @@ import lombok.val;
 
     private final String CLASS_EXTENSION = ".class";
     private Map<Class<?>, Object> DEPENDENCY_MAP;
+
+    /**
+     * Retrieves a singleton instance of the class.
+     *
+     * @throws IllegalStateException    when no classes have been scanned yet
+     * @throws IllegalArgumentException when there is no matching singleton
+     */
+    public <T> T retrieve(@NonNull Class<T> clazz) {
+        if (DEPENDENCY_MAP == null) throw new IllegalStateException("Retrieve called before scanning class-path.");
+        if (!DEPENDENCY_MAP.containsKey(clazz))
+            throw new IllegalArgumentException(format("No such singleton %s", clazz));
+        //noinspection unchecked
+        return (T) DEPENDENCY_MAP.get(clazz);
+    }
+
+    /**
+     * Creates a non-singleton instance of the class and injects needed dependencies.
+     *
+     * @throws IllegalStateException    if no classes have been scanned yet
+     * @throws IllegalArgumentException if the class could not be instantiated for some reason
+     */
+    public <T> T inject(@NonNull Class<T> clazz) {
+        if (DEPENDENCY_MAP == null) throw new IllegalStateException("Retrieve called before scanning class-path.");
+        try {
+            val arguments = primaryParameters(clazz).stream()
+                    .map(Parameter::getType)
+                    .map(Injector::retrieve)
+                    .toArray();
+            //noinspection unchecked
+            return (T) primaryConstructor(clazz).newInstance(arguments);
+        } catch (Exception e) {
+            throw new IllegalArgumentException(format("Could not instantiate %s", clazz), e);
+        }
+    }
+
+    /**
+     * The injector forgets about all previously scanned classes.
+     * <p>
+     * Use this with great caution as the singletons are not destroyed and can be instantiated a second time with
+     * another {@link #scan(Class, String)}.
+     * <p>
+     * It is advised to only use with in tests.
+     */
+    public void clear() {
+        DEPENDENCY_MAP = null;
+    }
 
     /**
      * Scans the class-path for classes annotated with {@link Component}, but only if they are inside the given
@@ -104,7 +164,7 @@ import lombok.val;
      * @throws IllegalStateException    when the class-path has already been scanned
      * @see #retrieve(Class)
      */
-    public void scan(@NonNull Class<? extends Annotation> annotationClass, @NonNull String packageName) {
+    public synchronized void scan(@NonNull Class<? extends Annotation> annotationClass, @NonNull String packageName) {
         if (DEPENDENCY_MAP != null) throw new IllegalStateException("Class-path has already been scanned.");
 
         val basePath = packageName.replace('.', '/');
@@ -157,9 +217,17 @@ import lombok.val;
                 DEPENDENCY_MAP.put(clazz, primaryConstructor(clazz).newInstance(arguments));
             } catch (NullPointerException e) {
                 throw new IllegalArgumentException("Missing dependency.", e);
-            } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                throw new IllegalArgumentException(format("Injecting dependecies failed for class %s", clazz));
+            } catch (Exception e) {
+                throw new IllegalArgumentException(format("Injecting dependecies failed for class %s", clazz), e);
             }
+        });
+    }
+
+    private ClassNode getOrCreate(Set<ClassNode> graph, Class<?> clazz) {
+        return graph.stream().filter(it -> it.value.equals(clazz)).findAny().orElseGet(() -> {
+            val node = new ClassNode(clazz);
+            graph.add(node);
+            return node;
         });
     }
 
@@ -179,35 +247,6 @@ import lombok.val;
                 .filter(it -> it.toLowerCase().endsWith(CLASS_EXTENSION));
     }
 
-    private ClassNode getOrCreate(Set<ClassNode> graph, Class<?> clazz) {
-        return graph.stream().filter(it -> it.value.equals(clazz)).findAny().orElseGet(() -> {
-            val node = new ClassNode(clazz);
-            graph.add(node);
-            return node;
-        });
-    }
-
-    private Constructor primaryConstructor(Class<?> clazz) {
-        return clazz.getDeclaredConstructors()[0];
-    }
-
-    private List<Parameter> primaryParameters(Class<?> clazz) {
-        return asList(primaryConstructor(clazz).getParameters());
-    }
-
-    /**
-     * Retrieves a singleton instance of the class.
-     *
-     * @throws IllegalStateException    when no classes have been scanned yet
-     * @throws IllegalArgumentException when the class has not been scanned
-     */
-    @SuppressWarnings("unchecked") public <T> T retrieve(@NonNull Class<T> clazz) {
-        if (DEPENDENCY_MAP == null) throw new IllegalStateException("Retrieve called before scanning class-path.");
-        if (!DEPENDENCY_MAP.containsKey(clazz))
-            throw new IllegalArgumentException(format("No such singleton %s", clazz));
-        return (T) DEPENDENCY_MAP.get(clazz);
-    }
-
     private boolean isExecutingJar(ClassLoader classLoader) {
         return classLoader.getResource("").toExternalForm().startsWith("jar");
     }
@@ -221,14 +260,23 @@ import lombok.val;
         return Files.walk(path);
     }
 
-    private String substringAfterLast(String source, String delimiter) {
-        return source.substring(source.lastIndexOf(delimiter) + delimiter.length());
-    }
-
     private <T> Stream<T> asStream(Enumeration<T> enumeration) {
         return stream(spliteratorUnknownSize(EnumIterator.of(enumeration), ORDERED), false);
     }
 
+    private String substringAfterLast(String source, String delimiter) {
+        return source.substring(source.lastIndexOf(delimiter) + delimiter.length());
+    }
+
+    private Constructor primaryConstructor(Class<?> clazz) {
+        return clazz.getDeclaredConstructors()[0];
+    }
+
+    private List<Parameter> primaryParameters(Class<?> clazz) {
+        return asList(primaryConstructor(clazz).getParameters());
+    }
+
+    // Needed to catch the checked exception
     @SneakyThrows private Class<?> asClass(String className, ClassLoader classLoader) {
         return Class.forName(className, false, classLoader);
     }

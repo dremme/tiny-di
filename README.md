@@ -21,7 +21,7 @@ repositories {
 }
 
 dependencies {
-  compile "com.github.dremme:tiny-injector:0.9.1"
+  compile "com.github.dremme:tiny-injector:0.10.0"
 }
 ```
 
@@ -38,7 +38,7 @@ dependencies {
 <dependency>
   <groupId>com.github.dremme</groupId>
   <artifactId>tiny-injector</artifactId>
-  <version>0.9.1</version>
+  <version>0.10.0</version>
 </dependency>
 ```
 
@@ -49,7 +49,9 @@ dependencies {
     public void beep() { ... }
 }
 
-@Component public class Bar { public Bar(Foo foo) { ... } }
+@Component public class Bar {
+    public Bar(Foo foo) { ... }
+}
 ```
 
 To automatically scan for these classes just call:
@@ -75,5 +77,18 @@ public static void main(String[] args) {
     scan(Component.class, "my.package");
     var foo = retrieve(Foo.class);
     foo.beep();
+}
+```
+
+For non-singleton instances dependencies can be injected after scanning:
+
+```java
+import static hamburg.remme.tinyinjector.Injector.inject;
+import static hamburg.remme.tinyinjector.Injector.scan;
+import hamburg.remme.tinyinjector.Component;
+
+public static void main(String[] args) {
+    scan(Component.class, "my.package");
+    var bar = inject(Bar.class);
 }
 ```
