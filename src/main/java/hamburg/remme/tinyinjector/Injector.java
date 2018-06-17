@@ -87,7 +87,6 @@ import lombok.val;
  * </pre>
  *
  * @author Dennis Remme (dennis@remme.hamburg)
- * @todo: migrate to Java 10 asap; depends on JITPACK and Lombok
  * @todo: move to MavenCentral? Bit cumbersome...
  */
 @UtilityClass public class Injector {
@@ -266,7 +265,7 @@ import lombok.val;
     }
 
     private <T> Stream<T> asStream(Enumeration<T> enumeration) {
-        return stream(spliteratorUnknownSize(EnumIterator.of(enumeration), ORDERED), false);
+        return stream(spliteratorUnknownSize(enumeration.asIterator(), ORDERED), false);
     }
 
     private String substringAfterLast(String source, String delimiter) {
@@ -288,31 +287,12 @@ import lombok.val;
 
     /**
      * Used for topological sort.
+     * <p>
+     * TODO: Lombok is not marking this as static correctly
      */
-    @RequiredArgsConstructor class ClassNode {
-
+    @RequiredArgsConstructor static class ClassNode {
         final Class<?> value;
         final List<ClassNode> neighbors = new ArrayList<>();
-
-    }
-
-    /**
-     * Used to wrap {@link Enumeration}.
-     *
-     * @deprecated To be replaced with Java 10.
-     */
-    @RequiredArgsConstructor(staticName = "of") class EnumIterator<T> implements Iterator<T> {
-
-        final Enumeration<T> enumeration;
-
-        @Override public boolean hasNext() {
-            return enumeration.hasMoreElements();
-        }
-
-        @Override public T next() {
-            return enumeration.nextElement();
-        }
-
     }
 
 }

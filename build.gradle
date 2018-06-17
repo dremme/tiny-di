@@ -1,5 +1,5 @@
 ext {
-  LOMBOK = 'org.projectlombok:lombok:1.16.20'
+  LOMBOK = 'org.projectlombok:lombok:1.18.0'
   JUNIT_API = 'org.junit.jupiter:junit-jupiter-api:5.1.1'
   JUNIT = 'org.junit.jupiter:junit-jupiter-engine:5.1.1'
 }
@@ -20,8 +20,8 @@ dependencies {
 }
 
 group 'com.github.dremme' // TODO: Correct group? Really needed for JITPACK?
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+sourceCompatibility = 10
+targetCompatibility = 10
 
 test {
   useJUnitPlatform()
